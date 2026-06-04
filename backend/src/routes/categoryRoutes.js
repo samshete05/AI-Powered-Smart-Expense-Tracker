@@ -1,0 +1,12 @@
+import { Router } from "express";
+import { createCategory, deleteCategory, listCategories, updateCategory } from "../controllers/categoryController.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+
+const router = Router();
+
+router.get("/", asyncHandler(listCategories));
+router.post("/", asyncHandler(createCategory));
+router.patch("/:id", asyncHandler(updateCategory));
+router.delete("/:id", asyncHandler(deleteCategory));
+
+export default router;
