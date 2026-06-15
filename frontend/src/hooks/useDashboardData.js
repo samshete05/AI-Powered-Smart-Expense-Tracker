@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { getAiInsights, getBudgets, getDashboardSummary } from "../services/api";
+import { DATA_CHANGED_EVENT } from "../lib/dataEvents";
 
 const initialData = {
   summary: {
     income: 0,
     expenses: 0,
     balance: 0,
-    safeToSpend: 0
+    safeToSpend: 0,
+    financialHealthScore: 0,
+    financialHealthLabel: "Fair"
   },
   wallets: [],
   budgets: [],
@@ -44,6 +47,13 @@ export function useDashboardData() {
 
   useEffect(() => {
     load();
+
+    function handleRefresh() {
+      load();
+    }
+
+    window.addEventListener(DATA_CHANGED_EVENT, handleRefresh);
+    return () => window.removeEventListener(DATA_CHANGED_EVENT, handleRefresh);
   }, []);
 
   return {

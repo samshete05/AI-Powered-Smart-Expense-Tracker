@@ -3,10 +3,12 @@ import { Budget } from "../models/Budget.js";
 import { Category } from "../models/Category.js";
 import { Transaction } from "../models/Transaction.js";
 import { resolveCurrentUser } from "../services/currentUser.js";
+import { processDueRecurringExpenses } from "../services/recurringProcessor.js";
 import { createHttpError } from "../utils/httpError.js";
 
 export async function listBudgets(req, res) {
   const user = await resolveCurrentUser(req);
+  await processDueRecurringExpenses(user._id, new Date());
   const budgets = await Budget.find({ createdBy: user._id })
     .populate("category", "name color")
     .sort({ month: -1, createdAt: -1 });

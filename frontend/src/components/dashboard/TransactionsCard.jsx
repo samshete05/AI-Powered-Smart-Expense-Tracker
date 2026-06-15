@@ -2,11 +2,11 @@ import { formatCurrency, formatDate } from "../../lib/formatters";
 
 export function TransactionsCard({ transactions }) {
   return (
-    <div className="rounded-[24px] border border-stone-200 bg-[#fdfcfc]/95 p-6 shadow-[0_22px_60px_rgba(83,67,51,0.08)] backdrop-blur-xl">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="rounded-[20px] border border-stone-200 bg-[#fdfcfc]/95 p-4 shadow-[0_18px_40px_rgba(83,67,51,0.06)] backdrop-blur-xl">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#8a7658]">Transactions</p>
-          <h2 className="mt-2 text-[26px] font-bold">Recent activity</h2>
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#8a7658]">Transactions</p>
+          <h2 className="mt-1 text-lg font-bold text-stone-900">Recent activity</h2>
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row">
@@ -23,8 +23,8 @@ export function TransactionsCard({ transactions }) {
         </div>
       </div>
 
-      <div className="mt-6 overflow-x-auto">
-        <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+      <div className="mt-4 overflow-x-auto">
+        <table className="min-w-full border-separate border-spacing-0 text-left text-[13px]">
           <thead>
             <tr className="text-stone-500">
               <th className="border-b border-stone-200 px-4 py-3 font-medium">Category</th>
@@ -37,15 +37,15 @@ export function TransactionsCard({ transactions }) {
           <tbody>
             {transactions.map((transaction) => (
               <tr key={transaction._id} className="text-stone-800">
-                <td className="border-b border-stone-100 px-4 py-4">
-                  <span className="rounded-full bg-[#efe7dc] px-3 py-1 text-xs font-semibold text-[#7a664a]">
+                <td className="border-b border-stone-100 px-3 py-3">
+                  <span className="rounded-full bg-[#efe7dc] px-2.5 py-1 text-[11px] font-semibold text-[#7a664a]">
                     {transaction.category?.name || "Uncategorized"}
                   </span>
                 </td>
-                <td className="border-b border-stone-100 px-4 py-4">{transaction.note || transaction.merchant || "No note"}</td>
-                <td className="border-b border-stone-100 px-4 py-4 text-stone-500">{transaction.wallet?.name || "No wallet"}</td>
-                <td className="border-b border-stone-100 px-4 py-4 text-stone-500">{formatDate(transaction.transactionDate)}</td>
-                <td className={`border-b border-stone-100 px-4 py-4 font-bold ${transaction.type === "income" ? "text-emerald-600" : "text-rose-500"}`}>
+                <td className="border-b border-stone-100 px-3 py-3">{transaction.note || transaction.merchant || "No note"}</td>
+                <td className="border-b border-stone-100 px-3 py-3 text-stone-500">{transaction.wallet?.name || "No wallet"}</td>
+                <td className="border-b border-stone-100 px-3 py-3 text-stone-500">{formatDate(transaction.transactionDate)}</td>
+                <td className={`border-b border-stone-100 px-3 py-3 font-bold ${transaction.type === "income" ? "text-emerald-600" : "text-rose-500"}`}>
                   {transaction.type === "income" ? "+" : "-"}
                   {formatCurrency(transaction.amount)}
                 </td>

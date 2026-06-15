@@ -18,8 +18,8 @@ body {
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), transparent 28%),
     linear-gradient(160deg, #e9e6e2 0%, #f1eeea 45%, #fdfcfc 100%);
   color: #2f2a24;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 button,
@@ -29,6 +29,19 @@ input {
 
 * {
   box-sizing: border-box;
+}
+
+button,
+[role="button"],
+select,
+summary {
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  min-width: 0;
 }
 
 ::selection {

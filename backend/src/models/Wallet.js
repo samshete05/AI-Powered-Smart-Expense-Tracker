@@ -13,6 +13,11 @@ const walletSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    normalizedName: {
+      type: String,
+      required: true,
+      trim: true
+    },
     type: {
       type: String,
       enum: ["cash", "bank", "card", "upi", "savings", "investment"],
@@ -39,5 +44,12 @@ const walletSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+walletSchema.pre("validate", function prepareNormalizedName(next) {
+  this.normalizedName = (this.name || "").trim().toLowerCase();
+  next();
+});
+
+walletSchema.index({ createdBy: 1, normalizedName: 1 }, { unique: true });
 
 export const Wallet = mongoose.model("Wallet", walletSchema);

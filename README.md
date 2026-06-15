@@ -100,3 +100,23 @@ The backend is ready for user ownership rules now. For local development it uses
 - `x-user-name`
 
 If these headers are absent, it falls back to the dev values in `.env`. This keeps the API usable while the Clerk frontend integration is still being wired through end to end.
+
+
+
+<!-- core product features  -->
+Recurring expense tracking for subscriptions, EMIs, rent, and bills.
+Smart category auto-tagging like food, travel, shopping, utilities.
+Monthly budget planner with category-wise limits.
+Cash flow dashboard showing income vs expenses vs savings.  -- overview dashboard
+Multi-account support for bank, wallet, UPI, cash, and credit card.
+Advanced filters and search by merchant, amount, category, and date.
+Export reports to PDF or CSV.
+
+
+<!-- automation features -->
+SMS auto-expense extraction from bank and UPI alerts.
+overspending over budget -- alert
+Screenshot/receipt upload with OCR-based parsing.
+Email invoice parsing for bills and subscriptions.  or sms 
+Auto recurring reminders for due payments.
+Rule-based automation like “If merchant contains Uber, set category Travel.”

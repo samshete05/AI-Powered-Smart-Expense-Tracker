@@ -11,14 +11,25 @@ export async function listCategories(req, res) {
 export async function createCategory(req, res) {
   const user = await resolveCurrentUser(req);
   const { name, type, icon, color } = req.body;
+  const trimmedName = name?.trim();
 
-  if (!name || !type) {
+  if (!trimmedName || !type) {
     throw createHttpError(400, "Category name and type are required");
+  }
+
+  const existingCategory = await Category.findOne({
+    createdBy: user._id,
+    type,
+    name: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
+  });
+
+  if (existingCategory) {
+    throw createHttpError(409, "A category with this name already exists");
   }
 
   const category = await Category.create({
     createdBy: user._id,
-    name,
+    name: trimmedName,
     type,
     icon,
     color
@@ -35,7 +46,23 @@ export async function updateCategory(req, res) {
     throw createHttpError(404, "Category not found");
   }
 
-  ["name", "type", "icon", "color"].forEach((field) => {
+  if (typeof req.body.name === "string" && req.body.name.trim()) {
+    const trimmedName = req.body.name.trim();
+    const duplicateCategory = await Category.findOne({
+      _id: { $ne: category._id },
+      createdBy: user._id,
+      type: req.body.type || category.type,
+      name: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
+    });
+
+    if (duplicateCategory) {
+      throw createHttpError(409, "A category with this name already exists");
+    }
+
+    category.name = trimmedName;
+  }
+
+  ["type", "icon", "color"].forEach((field) => {
     if (typeof req.body[field] === "string") {
       category[field] = req.body[field];
     }

@@ -1,8 +1,4 @@
-const currencyFormatter = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 0
-});
+let activeCurrency = "INR";
 
 const dateFormatter = new Intl.DateTimeFormat("en-IN", {
   day: "2-digit",
@@ -10,8 +6,28 @@ const dateFormatter = new Intl.DateTimeFormat("en-IN", {
   year: "numeric"
 });
 
-export function formatCurrency(value) {
-  return currencyFormatter.format(Number(value || 0));
+export function setGlobalCurrency(currency) {
+  activeCurrency = currency || "INR";
+}
+
+export function getGlobalCurrency() {
+  return activeCurrency;
+}
+
+export function formatCurrency(value, currency = activeCurrency) {
+  try {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: currency || "INR",
+      maximumFractionDigits: 0
+    }).format(Number(value || 0));
+  } catch {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0
+    }).format(Number(value || 0));
+  }
 }
 
 export function formatDate(value) {

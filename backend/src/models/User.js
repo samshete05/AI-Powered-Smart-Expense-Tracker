@@ -19,7 +19,11 @@ const userSchema = new mongoose.Schema(
     },
     preferences: {
       currency: { type: String, default: "INR" },
-      theme: { type: String, default: "dark" }
+      theme: { type: String, default: "dark" },
+      onboardingCompleted: { type: Boolean, default: false },
+      focusAreas: [{ type: String }],
+      incomeRange: { type: String, default: "" },
+      onboardingNotes: { type: String, default: "" }
     }
   },
   {
