@@ -1,6 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { createCategory, createTransaction, createWallet, deleteTransaction, updateTransaction } from "../../services/api";
 import { useTransactionsData } from "../../hooks/useTransactionsData";
+import { emitDataChanged } from "../../lib/dataEvents";
+import { getGlobalCurrency } from "../../lib/formatters";
+import { useToast } from "../ui/ToastProvider";
 import { ErrorState } from "../states/ErrorState";
 import { LoadingState } from "../states/LoadingState";
 import { TransactionChartCard } from "./TransactionChartCard";
@@ -55,8 +58,11 @@ export function TransactionsWorkspace() {
   const [transactionModalOpen, setTransactionModalOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [savingTransaction, setSavingTransaction] = useState(false);
+  const [savingWallet, setSavingWallet] = useState(false);
   const importInputRef = useRef(null);
   const { data, loading, error, refetch } = useTransactionsData(filters, chartRange);
+  const { pushToast } = useToast();
 
   const walletTypes = useMemo(
     () => Array.from(new Set(data.wallets.map((wallet) => wallet.type))).sort(),
@@ -70,53 +76,76 @@ export function TransactionsWorkspace() {
     const createdCategory = await createCategory({
       name: form.newCategoryName.trim(),
       type: form.type,
-      color: form.type === "income" ? "#16a34a" : "#f97316"
+      color: form.type === "income" ? "#16a34a" : "#f97316",
+      icon: form.type === "income" ? "wallet" : "shopping"
     });
 
     return createdCategory._id;
   }
 
   async function handleSaveTransaction(form) {
-    const categoryId = await ensureCategory(form);
+    if (savingTransaction) return;
+    setSavingTransaction(true);
 
-    const payload = {
-      type: form.type,
-      amount: Number(form.amount),
-      note: form.note,
-      walletId: form.walletId || undefined,
-      categoryId: categoryId || undefined,
-      merchant: form.merchant,
-      description: form.description,
-      transactionDate: form.transactionDate
-    };
+    try {
+      const categoryId = await ensureCategory(form);
 
-    if (editingTransaction) {
-      await updateTransaction(editingTransaction._id, payload);
-    } else {
-      await createTransaction(payload);
+      const payload = {
+        type: form.type,
+        amount: Number(form.amount),
+        note: form.note,
+        walletId: form.walletId || undefined,
+        categoryId: categoryId || undefined,
+        merchant: form.merchant,
+        description: form.description,
+        transactionDate: form.transactionDate
+      };
+
+      if (editingTransaction) {
+        await updateTransaction(editingTransaction._id, payload);
+        pushToast({ title: "Saved", message: "Transaction updated successfully." });
+      } else {
+        await createTransaction(payload);
+        pushToast({ title: "Saved", message: "Transaction added. Form is ready for another." });
+      }
+
+      emitDataChanged({ type: "transaction-changed" });
+      setTransactionModalOpen(false);
+      setEditingTransaction(null);
+      await refetch();
+    } finally {
+      setSavingTransaction(false);
     }
-
-    setTransactionModalOpen(false);
-    setEditingTransaction(null);
-    await refetch();
   }
 
   async function handleSaveWallet(form) {
-    await createWallet({
-      name: form.name,
-      type: form.type,
-      balance: Number(form.balance || 0),
-      color: form.color
-    });
+    if (savingWallet) return;
+    setSavingWallet(true);
 
-    setWalletModalOpen(false);
-    await refetch();
+    try {
+      await createWallet({
+        name: form.name,
+        type: form.type,
+        balance: Number(form.balance || 0),
+        currency: getGlobalCurrency(),
+        color: form.color
+      });
+
+      emitDataChanged({ type: "wallet-created" });
+      pushToast({ title: "Saved", message: "Wallet added successfully." });
+      setWalletModalOpen(false);
+      await refetch();
+    } finally {
+      setSavingWallet(false);
+    }
   }
 
   async function handleDeleteTransaction(transaction) {
     const confirmed = window.confirm(`Delete transaction "${transaction.note || transaction.merchant || "Untitled"}"?`);
     if (!confirmed) return;
     await deleteTransaction(transaction._id);
+    emitDataChanged({ type: "transaction-deleted" });
+    pushToast({ title: "Deleted", message: "Transaction removed from history." });
     await refetch();
   }
 
@@ -146,8 +175,11 @@ export function TransactionsWorkspace() {
     const fileText = await file.text();
     const rows = parseCsv(fileText);
 
+    const knownWallets = [...data.wallets];
+    const knownCategories = [...data.categories];
+
     for (const row of rows) {
-      let wallet = data.wallets.find(
+      let wallet = knownWallets.find(
         (item) => item.name.toLowerCase() === (row.wallet || "").toLowerCase()
       );
 
@@ -157,9 +189,10 @@ export function TransactionsWorkspace() {
           type: (row.walletType || "bank").toLowerCase(),
           balance: 0
         });
+        knownWallets.push(wallet);
       }
 
-      let category = data.categories.find(
+      let category = knownCategories.find(
         (item) =>
           item.name.toLowerCase() === (row.category || "").toLowerCase() &&
           item.type === (row.type || "expense").toLowerCase()
@@ -170,6 +203,7 @@ export function TransactionsWorkspace() {
           name: row.category,
           type: (row.type || "expense").toLowerCase()
         });
+        knownCategories.push(category);
       }
 
       await createTransaction({
@@ -186,6 +220,8 @@ export function TransactionsWorkspace() {
     }
 
     event.target.value = "";
+    emitDataChanged({ type: "transactions-imported" });
+    pushToast({ title: "Imported", message: `${rows.length} transaction${rows.length === 1 ? "" : "s"} added from CSV.` });
     await refetch();
   }
 
@@ -200,8 +236,8 @@ export function TransactionsWorkspace() {
   if (error) return <ErrorState message={error} onRetry={refetch} />;
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_360px]">
+    <div className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_320px]">
         <TransactionChartCard
           analytics={data.analytics}
           range={chartRange}
@@ -252,12 +288,14 @@ export function TransactionsWorkspace() {
         }}
         onSave={handleSaveTransaction}
         onOpenWalletModal={() => setWalletModalOpen(true)}
+        saving={savingTransaction}
       />
 
       <WalletFormModal
         open={walletModalOpen}
         onClose={() => setWalletModalOpen(false)}
         onSave={handleSaveWallet}
+        saving={savingWallet}
       />
     </div>
   );

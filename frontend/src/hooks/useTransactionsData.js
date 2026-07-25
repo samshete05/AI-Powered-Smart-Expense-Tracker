@@ -5,6 +5,7 @@ import {
   getTransactions,
   getWallets
 } from "../services/api";
+import { DATA_CHANGED_EVENT } from "../lib/dataEvents";
 
 const initialState = {
   transactions: [],
@@ -59,6 +60,13 @@ export function useTransactionsData(filters, chartRange) {
 
   useEffect(() => {
     load();
+
+    function handleRefresh() {
+      load();
+    }
+
+    window.addEventListener(DATA_CHANGED_EVENT, handleRefresh);
+    return () => window.removeEventListener(DATA_CHANGED_EVENT, handleRefresh);
   }, [load]);
 
   return {

@@ -43,8 +43,15 @@ const transactionSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ["manual", "ocr", "sms", "import"],
+      enum: ["manual", "ocr", "sms", "import", "email", "automation", "recurring"],
       default: "manual"
+    },
+    recurringExpense: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RecurringExpense"
+    },
+    recurringOccurrenceDate: {
+      type: Date
     },
     transactionDate: {
       type: Date,
@@ -62,5 +69,9 @@ const transactionSchema = new mongoose.Schema(
 );
 
 transactionSchema.index({ createdBy: 1, transactionDate: -1 });
+transactionSchema.index(
+  { createdBy: 1, recurringExpense: 1, recurringOccurrenceDate: 1 },
+  { unique: true, partialFilterExpression: { recurringExpense: { $exists: true }, recurringOccurrenceDate: { $exists: true } } }
+);
 
 export const Transaction = mongoose.model("Transaction", transactionSchema);

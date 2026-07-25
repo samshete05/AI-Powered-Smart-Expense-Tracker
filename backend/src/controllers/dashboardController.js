@@ -3,16 +3,19 @@ import { Budget } from "../models/Budget.js";
 import { Goal } from "../models/Goal.js";
 import { Transaction } from "../models/Transaction.js";
 import { Wallet } from "../models/Wallet.js";
+import { gatherFinanceContext } from "../services/aiInsightsService.js";
 import { resolveCurrentUser } from "../services/currentUser.js";
+import { processDueRecurringExpenses } from "../services/recurringProcessor.js";
 
 export async function getDashboardSummary(req, res) {
   const user = await resolveCurrentUser(req);
+  await processDueRecurringExpenses(user._id, new Date());
   const userId = new mongoose.Types.ObjectId(user._id);
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  const [totals, recentTransactions, wallets, budgets, goals, categoryBreakdown] = await Promise.all([
+  const [totals, recentTransactions, wallets, budgets, goals, categoryBreakdown, financeContext] = await Promise.all([
     Transaction.aggregate([
       { $match: { createdBy: userId, transactionDate: { $gte: monthStart, $lt: nextMonthStart } } },
       {
@@ -49,7 +52,8 @@ export async function getDashboardSummary(req, res) {
       },
       { $sort: { total: -1 } },
       { $limit: 5 }
-    ])
+    ]),
+    gatherFinanceContext(user._id, now)
   ]);
 
   const income = totals.find((item) => item._id === "income")?.total || 0;
@@ -68,7 +72,9 @@ export async function getDashboardSummary(req, res) {
         balance: income - expenses,
         budgetLimit,
         remainingBudget,
-        safeToSpend
+        safeToSpend,
+        financialHealthScore: financeContext.health.score,
+        financialHealthLabel: financeContext.health.label
       },
       wallets,
       goals: goals.map((goal) => ({

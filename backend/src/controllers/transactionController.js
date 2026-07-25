@@ -1,6 +1,9 @@
 import mongoose from "mongoose";
 import { Category } from "../models/Category.js";
 import { Transaction } from "../models/Transaction.js";
+import { applyRuleToTransactionInput } from "../services/automationEngine.js";
+import { normalizeMerchantName } from "../services/merchantNormalizer.js";
+import { processDueRecurringExpenses } from "../services/recurringProcessor.js";
 import { Wallet } from "../models/Wallet.js";
 import { resolveCurrentUser } from "../services/currentUser.js";
 import { createHttpError } from "../utils/httpError.js";
@@ -99,6 +102,7 @@ function buildBucketLabel(key, range) {
 
 export async function listTransactions(req, res) {
   const user = await resolveCurrentUser(req);
+  await processDueRecurringExpenses(user._id, new Date());
   const filters = { createdBy: user._id };
   const { search, walletId, walletType, categoryId, type, range, startDate, endDate } = req.query;
 
@@ -139,7 +143,7 @@ export async function listTransactions(req, res) {
 
   let transactions = await Transaction.find(filters)
     .populate("wallet", "name type")
-    .populate("category", "name type color")
+    .populate("category", "name type color icon")
     .sort({ transactionDate: -1, createdAt: -1 });
 
   if (walletType) {
@@ -151,7 +155,8 @@ export async function listTransactions(req, res) {
 
 export async function createTransaction(req, res) {
   const user = await resolveCurrentUser(req);
-  const { walletId, categoryId, type, amount, note, merchant, description, source, transactionDate, rawText } = req.body;
+  const enrichedBody = await applyRuleToTransactionInput(user._id, req.body);
+  const { walletId, categoryId, type, amount, note, merchant, description, source, transactionDate, rawText } = enrichedBody;
 
   if (!type || !["income", "expense"].includes(type)) {
     throw createHttpError(400, "Transaction type must be income or expense");
@@ -171,7 +176,7 @@ export async function createTransaction(req, res) {
     type,
     amount: Number(amount),
     note,
-    merchant,
+    merchant: normalizeMerchantName(merchant),
     description,
     source: source || "manual",
     transactionDate: transactionDate || new Date(),
@@ -182,7 +187,7 @@ export async function createTransaction(req, res) {
 
   const populated = await transaction.populate([
     { path: "wallet", select: "name type" },
-    { path: "category", select: "name type color" }
+    { path: "category", select: "name type color icon" }
   ]);
 
   res.status(201).json({ success: true, data: populated });
@@ -199,22 +204,24 @@ export async function updateTransaction(req, res) {
   const previousWalletId = transaction.wallet ? String(transaction.wallet) : null;
   const previousSignedAmount = getSignedAmount(transaction.type, transaction.amount);
 
-  if (req.body.walletId) {
-    const wallet = await validateOwnership(Wallet, req.body.walletId, user._id, "Wallet");
+  const enrichedBody = await applyRuleToTransactionInput(user._id, req.body);
+
+  if (enrichedBody.walletId) {
+    const wallet = await validateOwnership(Wallet, enrichedBody.walletId, user._id, "Wallet");
     transaction.wallet = wallet._id;
   }
 
-  if (req.body.categoryId) {
-    const category = await validateOwnership(Category, req.body.categoryId, user._id, "Category");
+  if (enrichedBody.categoryId) {
+    const category = await validateOwnership(Category, enrichedBody.categoryId, user._id, "Category");
     transaction.category = category._id;
   }
 
-  if (req.body.type) transaction.type = req.body.type;
-  if (req.body.amount) transaction.amount = Number(req.body.amount);
-  if (typeof req.body.note === "string") transaction.note = req.body.note;
-  if (typeof req.body.merchant === "string") transaction.merchant = req.body.merchant;
-  if (typeof req.body.description === "string") transaction.description = req.body.description;
-  if (req.body.transactionDate) transaction.transactionDate = req.body.transactionDate;
+  if (enrichedBody.type) transaction.type = enrichedBody.type;
+  if (enrichedBody.amount) transaction.amount = Number(enrichedBody.amount);
+  if (typeof enrichedBody.note === "string") transaction.note = enrichedBody.note;
+  if (typeof enrichedBody.merchant === "string") transaction.merchant = normalizeMerchantName(enrichedBody.merchant);
+  if (typeof enrichedBody.description === "string") transaction.description = enrichedBody.description;
+  if (enrichedBody.transactionDate) transaction.transactionDate = enrichedBody.transactionDate;
 
   await transaction.save();
 
@@ -230,7 +237,7 @@ export async function updateTransaction(req, res) {
 
   const populated = await transaction.populate([
     { path: "wallet", select: "name type" },
-    { path: "category", select: "name type color" }
+    { path: "category", select: "name type color icon" }
   ]);
 
   res.json({ success: true, data: populated });
@@ -251,6 +258,7 @@ export async function deleteTransaction(req, res) {
 
 export async function getTransactionAnalytics(req, res) {
   const user = await resolveCurrentUser(req);
+  await processDueRecurringExpenses(user._id, new Date());
   const range = req.query.range || "month";
   const filters = { createdBy: user._id };
   const dateRange = getDateRange(range, req.query.startDate, req.query.endDate);
