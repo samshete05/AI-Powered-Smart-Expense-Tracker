@@ -51,7 +51,21 @@ Base URL: `http://localhost:4000/api`
 ```env
 MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/?retryWrites=true&w=majority&appName=ai-powered-expense-tracker
 MONGODB_DB_NAME=ai_powered_expense_tracker
+CLIENT_URL=http://localhost:5173
 ```
+
+For deployment, set `CLIENT_URL` in Render to the URL where the frontend is
+hosted. Multiple frontend URLs can be comma-separated, for example:
+
+```env
+CLIENT_URL=https://your-frontend.onrender.com,http://localhost:5173
+```
+
+The API URL (`https://ai-powered-smart-expense-tracker-1.onrender.com`) is not
+the value to use unless it also serves the frontend. CORS controls browser
+origins, not devices; opening the same deployed frontend URL on another device
+works without adding that device's IP. For a local Vite server on another device,
+development mode also permits common private-network origins.
 
 3. Optional local auth defaults:
 

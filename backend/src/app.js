@@ -23,9 +23,20 @@ import walletRoutes from "./routes/walletRoutes.js";
 export function createApp() {
   const app = express();
 
+  const isDevelopment = env.nodeEnv !== "production";
+  const localNetworkOrigin = /^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(?::\d+)?$/;
+
   app.use(
     cors({
-      origin: env.clientUrl,
+      origin(origin, callback) {
+        // Requests from mobile apps, curl, and server-to-server clients have no Origin.
+        // Browsers must match the configured frontend URL (or a LAN Vite URL in development).
+        if (!origin || env.clientUrls.includes(origin) || (isDevelopment && localNetworkOrigin.test(origin))) {
+          return callback(null, true);
+        }
+
+        return callback(new Error("Origin is not allowed by CORS"));
+      },
       credentials: true
     })
   );
